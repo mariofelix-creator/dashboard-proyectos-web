@@ -118,6 +118,19 @@ nav.tabs button:focus-visible{outline:3px solid var(--lima);outline-offset:2px}
 .violeta .aviso-demo{color:#E4DEFF}
 .tabla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;font-size:16px}
 .tabla .t{color:var(--lima);font-weight:700}
+.ia-pasos{display:flex;flex-direction:column;gap:14px}
+.paso{display:flex;gap:12px;align-items:flex-start}
+.paso .n{flex:none;width:32px;height:32px;border-radius:50%;background:var(--violeta);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif}
+.paso>div{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.fila-btn{display:flex;gap:10px}
+.fila-btn>*{flex:1}
+.btn-link{display:flex;align-items:center;justify-content:center;min-height:50px;border-radius:14px;border:2px solid var(--tinta);background:#fff;color:var(--tinta);font-weight:700;text-decoration:none;font-size:16px}
+.ok-msg{background:#D6F5E3;color:#084D2F;border-radius:12px;padding:12px 14px;font-size:15px}
+.err-msg{background:var(--rojo-f);color:var(--rojo-t);border-radius:12px;padding:12px 14px;font-size:15px}
+.chip-btn{padding:10px 14px;border-radius:999px;border:2px solid var(--violeta);background:#fff;color:var(--vtexto);font-size:15px;font-weight:700;cursor:pointer;min-height:44px}
+.cambiar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border-radius:14px;padding:6px 6px 6px 14px;font-size:14px;font-weight:700}
+.cambiar button{min-height:40px;border-radius:10px;border:0;background:var(--fondo);color:var(--vtexto);font-weight:700;padding:0 12px;cursor:pointer}
+.vacio{background:#fff;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px}
 </style>
 </head>
 <body>
@@ -125,105 +138,137 @@ nav.tabs button:focus-visible{outline:3px solid var(--lima);outline-offset:2px}
   <aside class="lado">
     <span class="marca-chica">Demo navegable</span>
     <h1>Mi Parcial</h1>
-    <p>Una app para estudiar desde tus propios errores, inspirada en el informe "Pensar como un Freak" de Cristhian Vargas (INV 150).</p>
+    <p>Una app para estudiar cualquier materia desde tus propios errores, inspirada en el informe "Pensar como un Freak" de Cristhian Vargas (INV 150).</p>
     <ul>
-      <li>Responde el quiz sin apuntes.</li>
+      <li>Crea tu examen con la materia y los temas que quieras.</li>
+      <li>Genera las preguntas con una IA usando tus apuntes.</li>
       <li>Cada fallo entra a tu banco de errores.</li>
-      <li>Practica esos errores hasta resolverlos.</li>
-      <li>Mira tu curva de progreso.</li>
+      <li>Practica esos errores y mira tu curva de progreso.</li>
     </ul>
-    <p style="font-size:14px">En esta demo los datos se guardan solo en tu navegador. La versión real usa Supabase e IA para generar y corregir preguntas.</p>
+    <p style="font-size:14px">En esta demo los datos se guardan solo en tu navegador. En la versión completa, la IA estará integrada y no hará falta copiar y pegar.</p>
   </aside>
   <div id="app" class="app" aria-live="polite"></div>
 </div>
 
 <script>
-// ---------- Contenido de ejemplo (Estadística) ----------
-const PATRONES = {
-  'mediana-impar': { patron: 'Confundir mediana con media en datos impares', tema: 'Mediana',
-    ejercicio: 'Ordena los datos 14, 3, 9, 21, 6 y encuentra la mediana. Luego calcula la media y explica por qué son distintas.',
-    solucion: 'Ordenados: 3, 6, 9, 14, 21. Con n = 5 (impar), la mediana es el dato central: 9. La media es 53 / 5 = 10,6. Son distintas porque la media se deja arrastrar por el valor alto (21); la mediana no.' },
-  'moda-bimodal': { patron: 'Moda en distribuciones bimodales', tema: 'Moda',
-    ejercicio: 'Encuentra la moda de: 1, 3, 3, 5, 7, 7, 8. Explica tu respuesta.',
-    solucion: 'El 3 y el 7 aparecen dos veces cada uno y ningún otro valor se repite más. La distribución es bimodal: las modas son 3 y 7.' },
-  'abs-acum': { patron: 'Frecuencia absoluta vs. acumulada', tema: 'Datos agrupados',
-    ejercicio: 'Las frecuencias absolutas de cuatro clases son 2, 6, 9 y 3. Escribe la frecuencia acumulada de cada clase.',
-    solucion: 'Se suma cada frecuencia a las anteriores: 2, 8, 17, 20. La última frecuencia acumulada siempre es N (aquí 20).' },
-  'mediana-acum': { patron: 'Mediana con tablas de frecuencia acumulada', tema: 'Datos agrupados',
-    ejercicio: 'Una tabla tiene N = 50 y frecuencias acumuladas 8, 19, 33, 45 y 50. ¿En qué clase está la mediana? Explica cómo la ubicaste.',
-    solucion: 'La posición de la mediana es N / 2 = 25. La primera frecuencia acumulada que alcanza o supera 25 es 33, que corresponde a la tercera clase. Esa es la clase mediana.' },
-  'media-n': { patron: 'Olvidar dividir entre N en la media de datos agrupados', tema: 'Datos agrupados',
-    ejercicio: 'Calcula la media: marcas de clase 10, 20 y 30 con frecuencias 3, 5 y 2.',
-    solucion: 'Σ x·f = 30 + 100 + 60 = 190. N = 3 + 5 + 2 = 10. Media = 190 / 10 = 19. El error típico es quedarse en 190 o dividir entre 3 (el número de clases) en lugar de N.' },
-  'media-simple': { patron: 'Cálculo de la media simple', tema: 'Media',
-    ejercicio: 'Calcula la media de 12, 15, 9 y 20.',
-    solucion: 'Suma: 12 + 15 + 9 + 20 = 56. Hay 4 datos: 56 / 4 = 14.' },
-  'mediana-par': { patron: 'Mediana con cantidad par de datos', tema: 'Mediana',
-    ejercicio: 'Encuentra la mediana de 11, 4, 8, 15, 2, 9.',
-    solucion: 'Ordenados: 2, 4, 8, 9, 11, 15. Con n = 6 (par), la mediana es el promedio de los dos centrales: (8 + 9) / 2 = 8,5.' },
-  'clase-modal': { patron: 'Clase modal en datos agrupados', tema: 'Datos agrupados',
-    ejercicio: 'Clases 0–10, 10–20, 20–30 y 30–40 con frecuencias 5, 8, 12 y 4. ¿Cuál es la clase modal?',
-    solucion: 'La clase modal es la de mayor frecuencia: 20–30, con 12 datos.' }
+// ================= Bancos de ejemplo =================
+const EJEMPLOS = {
+  'Estadística': {
+    temas: ['Media', 'Mediana', 'Moda', 'Datos agrupados'],
+    preguntas: [
+      { tema: 'Mediana', pregunta: '¿Cuál es la mediana de 3, 5, 8, 12, 20?', opciones: ['8', '9,6', '12', '5'], correcta: 0,
+        explicacion: 'Con 5 datos ordenados, la mediana es el tercero: 8. El 9,6 es la media.',
+        error_tipico: 'Confundir mediana con media en datos impares',
+        ejercicio: 'Ordena 14, 3, 9, 21, 6 y encuentra la mediana. Luego calcula la media y explica por qué son distintas.',
+        solucion: 'Ordenados: 3, 6, 9, 14, 21. La mediana es el dato central: 9. La media es 53 / 5 = 10,6. La media se deja arrastrar por el valor alto; la mediana no.' },
+      { tema: 'Moda', pregunta: '¿Cuál es la moda de 2, 4, 4, 6, 9, 9?', opciones: ['4', '9', '4 y 9', 'No tiene moda'], correcta: 2,
+        explicacion: 'El 4 y el 9 aparecen dos veces cada uno: es bimodal.', error_tipico: 'Moda en distribuciones bimodales',
+        ejercicio: 'Encuentra la moda de 1, 3, 3, 5, 7, 7, 8 y explica tu respuesta.',
+        solucion: 'El 3 y el 7 aparecen dos veces y ningún otro valor se repite más: las modas son 3 y 7.' },
+      { tema: 'Media', pregunta: '¿Cuál es la media de 4, 7 y 10?', opciones: ['21', '7', '10', '6'], correcta: 1,
+        explicacion: '(4 + 7 + 10) / 3 = 7.', error_tipico: 'Cálculo de la media simple',
+        ejercicio: 'Calcula la media de 12, 15, 9 y 20.', solucion: '(12 + 15 + 9 + 20) / 4 = 56 / 4 = 14.' },
+      { tema: 'Datos agrupados', pregunta: 'Con N = 40 y frecuencias acumuladas 6, 15, 27, 36 y 40, ¿en qué clase está la mediana?', opciones: ['Primera', 'Segunda', 'Tercera', 'Cuarta'], correcta: 2,
+        explicacion: 'N / 2 = 20. La primera acumulada que llega a 20 es 27: la tercera clase.', error_tipico: 'Mediana con tablas de frecuencia acumulada',
+        ejercicio: 'N = 50 y frecuencias acumuladas 8, 19, 33, 45, 50. ¿En qué clase está la mediana? Explica.',
+        solucion: 'N / 2 = 25. La primera acumulada que alcanza 25 es 33: la tercera clase.' },
+      { tema: 'Datos agrupados', pregunta: 'Marcas de clase 5, 15 y 25 con frecuencias 4, 10 y 6. ¿Cuál es la media?', opciones: ['320', '106,7', '16', '15'], correcta: 2,
+        explicacion: 'Σ x·f = 320 y N = 20. Media = 320 / 20 = 16.', error_tipico: 'Olvidar dividir entre N en la media de datos agrupados',
+        ejercicio: 'Calcula la media: marcas 10, 20 y 30 con frecuencias 3, 5 y 2.',
+        solucion: 'Σ x·f = 30 + 100 + 60 = 190. N = 10. Media = 19. No se divide entre 3 (el número de clases) sino entre N.' },
+      { tema: 'Datos agrupados', pregunta: 'Las frecuencias absolutas son 3, 5 y 7. ¿Cuál es la frecuencia acumulada de la tercera clase?', opciones: ['7', '12', '15', '5'], correcta: 2,
+        explicacion: '3 + 5 + 7 = 15.', error_tipico: 'Frecuencia absoluta vs. acumulada',
+        ejercicio: 'Frecuencias absolutas 2, 6, 9 y 3. Escribe la frecuencia acumulada de cada clase.',
+        solucion: '2, 8, 17, 20. La última siempre es N.' },
+      { tema: 'Mediana', pregunta: '¿Cuál es la mediana de 7, 2, 9, 4?', opciones: ['7', '5,5', '4', '5'], correcta: 1,
+        explicacion: 'Ordenados: 2, 4, 7, 9. (4 + 7) / 2 = 5,5.', error_tipico: 'Mediana con cantidad par de datos',
+        ejercicio: 'Encuentra la mediana de 11, 4, 8, 15, 2, 9.', solucion: 'Ordenados: 2, 4, 8, 9, 11, 15. (8 + 9) / 2 = 8,5.' },
+      { tema: 'Datos agrupados', pregunta: 'Marcas de clase 5, 15 y 25 con frecuencias 4, 10 y 6. ¿Cuál es la clase modal?', opciones: ['La de marca 5', 'La de marca 15', 'La de marca 25', 'No hay'], correcta: 1,
+        explicacion: 'La clase modal es la de mayor frecuencia: la de marca 15.', error_tipico: 'Clase modal en datos agrupados',
+        ejercicio: 'Clases 0–10, 10–20, 20–30 y 30–40 con frecuencias 5, 8, 12 y 4. ¿Cuál es la clase modal?', solucion: '20–30, con la mayor frecuencia (12).' }
+    ]
+  },
+  'Introducción a la Economía': {
+    temas: ['Costo de oportunidad', 'Oferta y demanda', 'Elasticidad', 'Equilibrio de mercado'],
+    preguntas: [
+      { tema: 'Costo de oportunidad', pregunta: 'Tienes una tarde libre: puedes trabajar y ganar Bs 100 o estudiar. Si eliges estudiar, ¿cuál es tu costo de oportunidad?', opciones: ['Los Bs 100 que dejas de ganar', 'Nada, estudiar es gratis', 'El precio de los libros', 'Bs 50'], correcta: 0,
+        explicacion: 'El costo de oportunidad es el valor de la mejor alternativa a la que renuncias: los Bs 100.', error_tipico: 'Confundir costo de oportunidad con gasto en dinero' },
+      { tema: 'Oferta y demanda', pregunta: 'Si el precio de un bien sube y todo lo demás se mantiene igual, la cantidad demandada…', opciones: ['Baja', 'Sube', 'No cambia', 'Desplaza la curva a la derecha'], correcta: 0,
+        explicacion: 'Ley de la demanda: precio y cantidad demandada se mueven en sentido contrario.', error_tipico: 'Ley de la demanda' },
+      { tema: 'Oferta y demanda', pregunta: 'Sube el ingreso de los consumidores y el bien es normal. ¿Qué pasa con la curva de demanda?', opciones: ['Se desplaza a la derecha', 'Se desplaza a la izquierda', 'Hay un movimiento a lo largo de la curva', 'No cambia'], correcta: 0,
+        explicacion: 'Un cambio en el ingreso desplaza toda la curva; para un bien normal, hacia la derecha.', error_tipico: 'Desplazamiento de la curva vs. movimiento a lo largo de ella' },
+      { tema: 'Elasticidad', pregunta: 'El precio sube 10% y la cantidad demandada baja 20%. La demanda es…', opciones: ['Elástica', 'Inelástica', 'De elasticidad unitaria', 'Perfectamente inelástica'], correcta: 0,
+        explicacion: 'Elasticidad = 20% / 10% = 2, mayor que 1: demanda elástica.', error_tipico: 'Clasificar la elasticidad precio' },
+      { tema: 'Equilibrio de mercado', pregunta: 'Si el precio está por encima del precio de equilibrio, en el mercado hay…', opciones: ['Exceso de oferta', 'Escasez', 'Equilibrio', 'Exceso de demanda'], correcta: 0,
+        explicacion: 'A un precio alto, los productores ofrecen más de lo que los consumidores compran: sobra producto.', error_tipico: 'Excedente vs. escasez' },
+      { tema: 'Costo de oportunidad', pregunta: '¿Cuál de estos temas estudia la macroeconomía?', opciones: ['La inflación de un país', 'El precio del pan en un mercado', 'Las decisiones de una empresa', 'La demanda de un consumidor'], correcta: 0,
+        explicacion: 'La macroeconomía estudia agregados de toda la economía, como la inflación.', error_tipico: 'Micro vs. macroeconomía' }
+    ]
+  },
+  'Comercio Internacional': {
+    temas: ['Ventaja comparativa', 'Política comercial', 'Balanza comercial', 'Incoterms'],
+    preguntas: [
+      { tema: 'Ventaja comparativa', pregunta: 'Por trabajador, el país A produce 10 t de trigo o 5 de tela; el país B, 4 t de trigo o 4 de tela. ¿En qué tiene ventaja comparativa B?', opciones: ['Tela', 'Trigo', 'En ambos', 'En ninguno'], correcta: 0,
+        explicacion: 'Una unidad de tela le cuesta a A 2 t de trigo y a B solo 1 t. B tiene menor costo de oportunidad en tela.', error_tipico: 'Ventaja comparativa con costos de oportunidad' },
+      { tema: 'Política comercial', pregunta: 'Un arancel a las importaciones, en el país que lo aplica, normalmente…', opciones: ['Sube el precio interno del bien importado', 'Baja el precio interno', 'Aumenta las importaciones', 'No tiene efecto'], correcta: 0,
+        explicacion: 'El arancel encarece el bien importado; el precio interno sube y las importaciones caen.', error_tipico: 'Efectos de un arancel' },
+      { tema: 'Balanza comercial', pregunta: 'Un país exporta 8.000 millones e importa 10.000 millones. Su balanza comercial tiene…', opciones: ['Déficit de 2.000 millones', 'Superávit de 2.000 millones', 'Equilibrio', 'Déficit de 18.000 millones'], correcta: 0,
+        explicacion: 'Exportaciones − importaciones = 8.000 − 10.000 = −2.000: déficit.', error_tipico: 'Calcular la balanza comercial' },
+      { tema: 'Política comercial', pregunta: 'Si la moneda de un país se deprecia frente al dólar, sus exportaciones se vuelven…', opciones: ['Más baratas para los compradores extranjeros', 'Más caras para los extranjeros', 'Iguales', 'Imposibles'], correcta: 0,
+        explicacion: 'Con la moneda más débil, cada dólar compra más bienes del país: sus exportaciones se abaratan.', error_tipico: 'Efecto del tipo de cambio en el comercio' },
+      { tema: 'Incoterms', pregunta: 'Bajo el Incoterm FOB, ¿cuándo pasa el riesgo del vendedor al comprador?', opciones: ['Cuando la mercancía está a bordo del buque en el puerto de embarque', 'Cuando llega al puerto de destino', 'Al salir de la fábrica', 'Al pagar la factura'], correcta: 0,
+        explicacion: 'En FOB el riesgo se transmite cuando la mercancía queda a bordo del buque en el puerto de embarque.', error_tipico: 'Incoterms: traspaso del riesgo' },
+      { tema: 'Política comercial', pregunta: '¿Qué es una cuota de importación?', opciones: ['Un límite a la cantidad que se puede importar', 'Un impuesto por unidad importada', 'Un subsidio a los exportadores', 'Un acuerdo de libre comercio'], correcta: 0,
+        explicacion: 'La cuota limita la cantidad; el arancel es un impuesto.', error_tipico: 'Cuota vs. arancel' }
+    ]
+  }
 };
 
-const PREGUNTAS = [
-  { p: 'mediana-impar', texto: '¿Cuál es la mediana de 3, 5, 8, 12, 20?', ops: ['8', '9,6', '12', '5'], ok: 0,
-    exp: 'Con 5 datos ordenados, la mediana es el tercero: 8. El 9,6 es la media.' },
-  { p: 'moda-bimodal', texto: '¿Cuál es la moda de 2, 4, 4, 6, 9, 9?', ops: ['4', '9', '4 y 9', 'No tiene moda'], ok: 2,
-    exp: 'El 4 y el 9 aparecen dos veces cada uno: es bimodal.' },
-  { p: 'media-simple', texto: '¿Cuál es la media de 4, 7 y 10?', ops: ['21', '7', '10', '6'], ok: 1,
-    exp: '(4 + 7 + 10) / 3 = 21 / 3 = 7.' },
-  { p: 'mediana-acum', texto: 'Con N = 40 y frecuencias acumuladas 6, 15, 27, 36 y 40, ¿en qué clase está la mediana?', ops: ['Primera', 'Segunda', 'Tercera', 'Cuarta'], ok: 2,
-    exp: 'N / 2 = 20. La primera acumulada que llega a 20 es 27: la tercera clase.' },
-  { p: 'media-n', texto: 'Marcas de clase 5, 15 y 25 con frecuencias 4, 10 y 6. ¿Cuál es la media?', ops: ['320', '106,7', '16', '15'], ok: 2,
-    exp: 'Σ x·f = 20 + 150 + 150 = 320 y N = 20. Media = 320 / 20 = 16.' },
-  { p: 'abs-acum', texto: 'Las frecuencias absolutas son 3, 5 y 7. ¿Cuál es la frecuencia acumulada de la tercera clase?', ops: ['7', '12', '15', '5'], ok: 2,
-    exp: '3 + 5 + 7 = 15.' },
-  { p: 'mediana-par', texto: '¿Cuál es la mediana de 7, 2, 9, 4?', ops: ['7', '5,5', '4', '5'], ok: 1,
-    exp: 'Ordenados: 2, 4, 7, 9. Promedio de los centrales: (4 + 7) / 2 = 5,5.' },
-  { p: 'clase-modal', texto: 'Marcas de clase 5, 15 y 25 con frecuencias 4, 10 y 6. ¿Cuál es la clase modal?', ops: ['La de marca 5', 'La de marca 15', 'La de marca 25', 'No hay'], ok: 1,
-    exp: 'La clase modal es la de mayor frecuencia: 10, en la clase de marca 15.' }
+// Sesiones del informe de Cristhian Vargas (5 al 13 de mayo)
+const SESIONES_CRISTHIAN = [
+  { label: 'L 5', total: 20, ok: 9, min: 45 }, { label: 'M 6', total: 20, ok: 11, min: 40 },
+  { label: 'X 7', total: 20, ok: 13, min: 40 }, { label: 'J 8', total: 20, ok: 15, min: 45 },
+  { label: 'V 9', total: 25, ok: 21, min: 60 }, { label: 'L 12', total: 30, ok: 26, min: 40 },
+  { label: 'M 13', total: 40, ok: 36, min: 90 }
 ];
 
-function manana() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+// ================= Estado =================
+function enDias(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function nuevoId() { return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-function estadoInicial() {
-  return {
-    user: null, screen: 'login',
-    exams: [{ id: 'e1', materia: 'Estadística', titulo: 'Parcial', fecha: manana(), temas: ['Media', 'Mediana', 'Moda', 'Datos agrupados'] }],
-    errors: [
-      { k: 'mediana-impar', ap: 2, estado: 'resuelto' },
-      { k: 'moda-bimodal', ap: 2, estado: 'resuelto' },
-      { k: 'abs-acum', ap: 2, estado: 'resuelto' },
-      { k: 'mediana-acum', ap: 4, estado: 'en_practica' },
-      { k: 'media-n', ap: 2, estado: 'en_practica' }
-    ],
-    // Sesiones del informe de Cristhian Vargas (5 al 13 de mayo)
-    sessions: [
-      { label: 'L 5', total: 20, ok: 9, min: 45 }, { label: 'M 6', total: 20, ok: 11, min: 40 },
-      { label: 'X 7', total: 20, ok: 13, min: 40 }, { label: 'J 8', total: 20, ok: 15, min: 45 },
-      { label: 'V 9', total: 25, ok: 21, min: 60 }, { label: 'L 12', total: 30, ok: 26, min: 40 },
-      { label: 'M 13', total: 40, ok: 36, min: 90 }
-    ],
-    quiz: null, practica: null
-  };
+function crearExamen(materia, fecha, temas, conEjemplo) {
+  const ej = conEjemplo ? EJEMPLOS[materia] : null;
+  return { id: nuevoId(), materia, titulo: 'Parcial', fecha, temas: temas.length ? temas : (ej ? ej.temas.slice() : []),
+    preguntas: ej ? JSON.parse(JSON.stringify(ej.preguntas)) : [], errores: [], sesiones: [] };
 }
 
-const CLAVE = 'mi-parcial-demo-v1';
+function estadoInicial() {
+  const est = crearExamen('Estadística', enDias(1), [], true);
+  est.sesiones = JSON.parse(JSON.stringify(SESIONES_CRISTHIAN));
+  const p = est.preguntas;
+  const err = (i, ap, estado) => ({ patron: p[i].error_tipico, tema: p[i].tema, ap, estado, ejercicio: p[i].ejercicio, solucion: p[i].solucion });
+  est.errores = [err(0, 2, 'resuelto'), err(1, 2, 'resuelto'), err(5, 2, 'resuelto'), err(3, 4, 'en_practica'), err(4, 2, 'en_practica')];
+  return { user: null, screen: 'login', exams: [est], actual: est.id, quiz: null, practica: null, ia: { notas: '', cantidad: 10, msg: null } };
+}
+
+const CLAVE = 'mi-parcial-demo-v2';
 let S;
 try { S = JSON.parse(localStorage.getItem(CLAVE)) || estadoInicial(); } catch (e) { S = estadoInicial(); }
 function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify(S)); } catch (e) {} }
 
-// ---------- Utilidades ----------
-const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// ================= Utilidades =================
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (s) => Math.round(100 * s.ok / s.total);
-const abiertos = () => S.errors.filter((e) => e.estado !== 'resuelto');
+const ex = () => S.exams.find((x) => x.id === S.actual) || S.exams[0];
+const abiertos = (e) => (e || ex()).errores.filter((x) => x.estado !== 'resuelto');
+const patronDe = (q) => (q.error_tipico || ('Pregunta de ' + (q.tema || 'repaso'))).trim();
 function diasTexto(f) {
+  if (!f) return 'Sin fecha';
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const d = Math.round((new Date(f + 'T00:00:00') - hoy) / 86400000);
   return d < 0 ? 'Ya pasó' : d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : 'En ' + d + ' días';
 }
-const fechaLarga = (f) => new Date(f + 'T00:00:00').toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' });
+const fechaLarga = (f) => f ? new Date(f + 'T00:00:00').toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
 function barajar(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function ir(screen) { S.screen = screen; guardar(); render(); document.querySelector('.contenido')?.scrollTo(0, 0); window.scrollTo(0, 0); }
@@ -233,8 +278,45 @@ function tabs(actual) {
   return '<nav class="tabs" aria-label="Secciones">' + TABS.map(([k, t]) =>
     `<button type="button" data-ir="${k}" ${k === actual ? 'aria-current="page"' : ''}>${t}</button>`).join('') + '</nav>';
 }
+const cabeceraMateria = () => S.exams.length > 1
+  ? `<div class="cambiar"><span>${esc(ex().materia)}</span><button type="button" data-ir="examenes">Cambiar materia</button></div>` : '';
 
-// ---------- Pantallas ----------
+// ================= Prompt para la IA =================
+function promptIA() {
+  const e = ex(), ab = abiertos(e);
+  const lineas = [
+    `Actúa como mi profesor universitario de ${e.materia}. Tengo un examen y quiero entrenar con preguntas.`,
+    e.temas.length ? `Temas que entran: ${e.temas.join(', ')}.` : '',
+    ab.length ? `Dale más peso a estos errores que suelo cometer: ${ab.map((x) => x.patron).join('; ')}.` : '',
+    S.ia.notas.trim() ? `Basa las preguntas en este material de clase:\n"""\n${S.ia.notas.trim()}\n"""` : '',
+    `Genera ${S.ia.cantidad} preguntas de opción múltiple con 4 opciones cada una, con la dificultad de un examen universitario.`,
+    'Responde SOLO con un arreglo JSON válido, sin texto antes ni después, con este formato exacto:',
+    '[{"tema":"...","pregunta":"...","opciones":["...","...","...","..."],"correcta":0,"explicacion":"por qué es correcta","error_tipico":"nombre corto del error que comete quien falla","ejercicio":"ejercicio de respuesta abierta para practicar ese error","solucion":"solución paso a paso del ejercicio"}]',
+    '"correcta" es el número (0 a 3) de la opción correcta. Varía la posición de la respuesta correcta.'
+  ];
+  return lineas.filter(Boolean).join('\n\n');
+}
+
+function importarPreguntas(texto) {
+  const a = texto.indexOf('['), b = texto.lastIndexOf(']');
+  if (a < 0 || b <= a) throw new Error('No encontré un arreglo JSON. Copia la respuesta completa de la IA, desde el primer [ hasta el último ].');
+  let datos;
+  try { datos = JSON.parse(texto.slice(a, b + 1)); } catch (e) { throw new Error('El JSON tiene un error de formato. Pídele a la IA: "Corrige el formato JSON y responde solo con el arreglo".'); }
+  if (!Array.isArray(datos)) throw new Error('La respuesta no es una lista de preguntas.');
+  const validas = [];
+  for (const d of datos) {
+    const ops = Array.isArray(d.opciones) ? d.opciones.map(String).filter((o) => o.trim()) : [];
+    const c = Number(d.correcta);
+    if (!d.pregunta || ops.length < 2 || !Number.isInteger(c) || c < 0 || c >= ops.length) continue;
+    validas.push({ tema: String(d.tema || ''), pregunta: String(d.pregunta), opciones: ops, correcta: c,
+      explicacion: String(d.explicacion || ''), error_tipico: String(d.error_tipico || ''),
+      ejercicio: d.ejercicio ? String(d.ejercicio) : '', solucion: d.solucion ? String(d.solucion) : '' });
+  }
+  if (!validas.length) throw new Error('Ninguna pregunta tenía el formato correcto (pregunta, opciones y número de respuesta correcta).');
+  return { validas, descartadas: datos.length - validas.length };
+}
+
+// ================= Pantallas =================
 const V = {};
 
 V.login = () => `
@@ -243,91 +325,119 @@ V.login = () => `
     <div class="logo" aria-hidden="true">M</div>
     <h1 class="grande">Mi Parcial</h1>
     <p class="lema">Estudia menos horas. Entrena solo lo que fallas.</p>
-    <p class="suave">Cada error que cometes se guarda y vuelve en tu próximo quiz hasta que lo resuelvas.</p>
+    <p class="suave">Sirve para cualquier materia: tú pones los temas, la IA arma las preguntas y cada error que cometes vuelve hasta que lo resuelvas.</p>
   </div>
   <form id="f-login" class="campo" style="gap:14px">
     <label for="correo">Tu correo</label>
     <input id="correo" type="email" required autocomplete="email" placeholder="nombre@correo.com">
     <button class="btn btn-lima" type="submit">Entrar a la demo</button>
-    <p class="aviso-demo">Demo: no se envía ningún correo. En la versión real llega un enlace de acceso.</p>
+    <p class="aviso-demo">Demo: no se envía ningún correo. Tus datos quedan solo en este navegador.</p>
   </form>
 </div>`;
 
-V.examenes = () => {
-  const ult = S.sessions[S.sessions.length - 1];
-  const actual = ult ? pct(ult) : 0;
-  const [prim, ...otros] = S.exams;
-  const plan = abiertos().length
-    ? 'Preguntas que priorizan tus errores abiertos: ' + abiertos().map((e) => PATRONES[e.k].patron.toLowerCase()).join('; ') + '.'
-    : 'No tienes errores abiertos. Haz un simulacro para comprobar que llegas listo.';
-  return `
+V.examenes = () => `
 <div class="contenido">
   <div class="fila" style="align-items:flex-end">
     <div><p class="gris">${esc(S.user)}</p><h1 style="font-size:32px">Mis exámenes</h1></div>
     <button type="button" class="enlace" id="salir">Salir</button>
   </div>
-  ${prim ? `
-  <section class="oscura" aria-label="${esc(prim.materia)}">
-    <div class="fila"><span class="pastilla p-lima">${diasTexto(prim.fecha)}</span><span class="suave2" style="font-size:14px">${fechaLarga(prim.fecha)}</span></div>
-    <h2 style="font-size:28px">${esc(prim.materia)} · ${esc(prim.titulo)}</h2>
+  ${S.exams.map((e) => {
+    const ult = e.sesiones[e.sesiones.length - 1];
+    const ac = ult ? pct(ult) + '%' : '—';
+    const n = e.preguntas.length;
+    return `
+  <section class="oscura" aria-label="${esc(e.materia)}">
+    <div class="fila"><span class="pastilla p-lima">${diasTexto(e.fecha)}</span><span class="suave2" style="font-size:14px">${fechaLarga(e.fecha)}</span></div>
+    <h2 style="font-size:26px">${esc(e.materia)} · ${esc(e.titulo)}</h2>
+    ${e.temas.length ? `<p class="suave2" style="font-size:14px">${e.temas.map(esc).join(' · ')}</p>` : ''}
     <div class="fila" style="align-items:flex-end">
-      <div><p class="suave2" style="font-size:13px">Acierto actual</p><p class="cifra" style="color:var(--lima)">${actual}%</p></div>
-      <p class="suave2" style="font-size:14px;text-align:right">${abiertos().length} errores abiertos<br>${S.sessions.length} sesiones</p>
+      <div><p class="suave2" style="font-size:13px">Acierto actual</p><p class="cifra" style="color:var(--lima);font-size:40px">${ac}</p></div>
+      <p class="suave2" style="font-size:14px;text-align:right">${n} preguntas<br>${abiertos(e).length} ${abiertos(e).length === 1 ? 'error abierto' : 'errores abiertos'}</p>
     </div>
-    <div class="barra" role="img" aria-label="Acierto ${actual}%"><i style="width:${actual}%"></i></div>
-    <button type="button" class="btn btn-violeta sobre-oscuro" data-quiz="quiz">Empezar sesión de hoy</button>
-  </section>
-  <div class="tarjeta"><p style="font-size:13px;font-weight:700;color:var(--vtexto)">Plan de hoy · 6 preguntas</p><p>${esc(plan)}</p></div>` : ''}
-  ${otros.map((x) => `
-  <div class="tarjeta borde">
-    <div class="fila"><span class="pastilla p-ambar">${diasTexto(x.fecha)}</span><span class="gris">${fechaLarga(x.fecha)}</span></div>
-    <h3 style="font-size:22px">${esc(x.materia)} · ${esc(x.titulo)}</h3>
-    ${x.temas.length ? `<p class="gris">${x.temas.map(esc).join(' · ')}</p>` : ''}
-    <p class="gris">En la versión real, la IA genera las preguntas a partir de los recursos que subas.</p>
-  </div>`).join('')}
-  <button type="button" class="btn btn-punteado" data-ir="nuevo">+ Agregar examen</button>
+    ${n ? `<button type="button" class="btn btn-violeta sobre-oscuro" data-estudiar="${e.id}">Empezar sesión de hoy</button>
+    <button type="button" class="btn btn-borde-claro btn-chico" data-banco="${e.id}">Agregar preguntas con IA</button>`
+       : `<button type="button" class="btn btn-violeta sobre-oscuro" data-banco="${e.id}">Generar preguntas con IA</button>`}
+  </section>`; }).join('')}
+  <button type="button" class="btn btn-punteado" data-ir="nuevo">+ Agregar examen de otra materia</button>
 </div>${tabs('examenes')}`;
-};
 
 V.nuevo = () => `
 <div class="contenido">
   <button type="button" class="enlace" data-ir="examenes">← Volver</button>
   <h1 style="font-size:32px">Nuevo examen</h1>
   <form id="f-nuevo" style="display:flex;flex-direction:column;gap:16px">
-    <div class="campo"><label for="materia">Materia</label><input id="materia" type="text" required placeholder="Introducción a la Economía"></div>
+    <div class="campo"><label for="materia">Materia</label><input id="materia" type="text" required placeholder="Ej.: Historia de Bolivia, Contabilidad, Cálculo I"></div>
     <div class="campo"><label for="fecha">Fecha del examen</label><input id="fecha" type="date" required></div>
-    <div class="campo"><label for="temas">Temas, separados por coma</label><input id="temas" type="text" placeholder="Oferta, Demanda, Elasticidad"></div>
-    <div class="campo">
-      <label for="archivos">Recursos del examen</label>
-      <input id="archivos" type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg" style="font-size:15px">
-      <div id="lista-archivos" class="lista" hidden></div>
-      <p class="gris" style="font-size:13px">Guía del profesor, ejercicios de clase, formulario. En la demo los archivos no se suben.</p>
-    </div>
-    <button class="btn btn-violeta" type="submit">Crear examen</button>
+    <div class="campo"><label for="temas">Temas, separados por coma</label><input id="temas" type="text" placeholder="Ej.: Guerra del Pacífico, Revolución de 1952"></div>
+    <button class="btn btn-violeta" type="submit">Crear y generar preguntas</button>
   </form>
+  <div class="tarjeta">
+    <p style="font-weight:700">¿Solo quieres probar? Usa un ejemplo listo</p>
+    <div class="chips">${Object.keys(EJEMPLOS).map((m) => `<button type="button" class="chip-btn" data-ejemplo="${esc(m)}">${esc(m)}</button>`).join('')}</div>
+  </div>
 </div>`;
 
+V.banco = () => {
+  const e = ex(), m = S.ia.msg;
+  return `
+<div class="contenido">
+  <button type="button" class="enlace" data-ir="examenes">← Mis exámenes</button>
+  <div><p class="gris">${esc(e.materia)}</p><h1 style="font-size:30px">Generar preguntas con IA</h1></div>
+  <p class="gris">Tu banco tiene <b style="color:var(--tinta)">${e.preguntas.length} preguntas</b>. Agrega más en tres pasos, con la IA que uses (Claude, ChatGPT, Gemini).</p>
+  ${m ? `<p class="${m.ok ? 'ok-msg' : 'err-msg'}" role="${m.ok ? 'status' : 'alert'}">${esc(m.texto)}</p>` : ''}
+  <div class="ia-pasos">
+    <div class="paso"><span class="n">1</span><div>
+      <label for="notas">Pega tu guía o apuntes (opcional)</label>
+      <textarea id="notas" placeholder="Pega aquí el texto de la guía del profesor, tus apuntes o los ejercicios de clase.">${esc(S.ia.notas)}</textarea>
+      <div class="fila"><label for="cantidad">Cantidad de preguntas</label>
+        <select id="cantidad" style="height:44px;border:2px solid var(--tinta);border-radius:12px;padding:0 10px;font:inherit;background:#fff">
+          ${[5, 10, 15, 20].map((n) => `<option ${n === S.ia.cantidad ? 'selected' : ''}>${n}</option>`).join('')}
+        </select></div>
+    </div></div>
+    <div class="paso"><span class="n">2</span><div>
+      <p style="font-weight:700">Copia la instrucción y pégala en la IA</p>
+      <button type="button" class="btn btn-lima btn-chico" id="copiar">Copiar instrucción</button>
+      <div class="fila-btn">
+        <a class="btn-link" href="https://claude.ai/new" target="_blank" rel="noopener">Abrir Claude</a>
+        <a class="btn-link" href="https://chatgpt.com/" target="_blank" rel="noopener">Abrir ChatGPT</a>
+      </div>
+      <details><summary class="gris" style="cursor:pointer;min-height:32px">Ver la instrucción</summary>
+        <pre id="prompt" style="white-space:pre-wrap;font-size:12px;background:#fff;border-radius:12px;padding:12px;margin:8px 0 0">${esc(promptIA())}</pre></details>
+    </div></div>
+    <div class="paso"><span class="n">3</span><div>
+      <label for="respuesta">Pega aquí la respuesta de la IA</label>
+      <textarea id="respuesta" placeholder='[{"tema": "...", "pregunta": "...", ...}]'></textarea>
+      <button type="button" class="btn btn-violeta btn-chico" id="importar">Cargar preguntas</button>
+    </div></div>
+  </div>
+  ${e.preguntas.length ? `<button type="button" class="btn btn-lima" data-estudiar="${e.id}">Empezar sesión</button>` : ''}
+</div>`;
+};
+
 V.sesion = () => {
-  const q = S.quiz, P = PREGUNTAS[q.orden[q.i]], pat = PATRONES[P.p];
-  const err = S.errors.find((e) => e.k === P.p && e.estado !== 'resuelto');
-  const ops = P.ops.map((o, i) => {
-    let cls = '', extra = '';
-    if (q.verificado) { if (i === P.ok) cls = 'ok'; else if (i === q.elegido) cls = 'mal'; }
-    return `<button type="button" class="opcion ${cls}" data-op="${i}" aria-pressed="${!q.verificado && q.elegido === i}" ${q.verificado ? 'disabled' : ''}>${String.fromCharCode(65 + i)}. ${esc(o)}${extra}</button>`;
+  const q = S.quiz, e = ex(), P = e.preguntas[q.orden[q.i]], perm = q.perms[q.i];
+  const okPos = perm.indexOf(P.correcta);
+  const patron = patronDe(P);
+  const err = e.errores.find((x) => x.patron === patron && x.estado !== 'resuelto');
+  const ops = perm.map((orig, pos) => {
+    let cls = '';
+    if (q.verificado) { if (pos === okPos) cls = 'ok'; else if (pos === q.elegido) cls = 'mal'; }
+    return `<button type="button" class="opcion ${cls}" data-op="${pos}" aria-pressed="${!q.verificado && q.elegido === pos}" ${q.verificado ? 'disabled' : ''}>${String.fromCharCode(65 + pos)}. ${esc(P.opciones[orig])}</button>`;
   }).join('');
-  const bien = q.elegido === P.ok;
+  const bien = q.elegido === okPos;
   return `
 <div class="contenido">
   <div class="fila">
     <button type="button" class="enlace" id="salir-quiz">Salir</button>
-    <p style="font-weight:700">${q.modo === 'simulacro' ? 'Simulacro · ' : ''}Pregunta ${q.i + 1} de ${q.orden.length}</p>
+    <p style="font-weight:700">${q.modo === 'simulacro' ? 'Simulacro · ' : ''}${q.i + 1} de ${q.orden.length}</p>
     <span class="pastilla p-lima">${q.aciertos} ✓</span>
   </div>
   <div class="barra" role="img" aria-label="Avance"><i style="width:${Math.round(100 * q.i / q.orden.length)}%"></i></div>
-  ${err && q.modo !== 'simulacro' ? `<span class="pastilla p-ambar" style="align-self:flex-start;white-space:normal">Viene de tu error: ${esc(pat.patron.toLowerCase())}</span>` : `<span class="pastilla p-verde" style="align-self:flex-start">${esc(pat.tema)}</span>`}
-  <div class="tarjeta"><p class="pregunta">${esc(P.texto)}</p><p class="gris" style="font-size:14px">Responde sin mirar apuntes.</p></div>
+  ${err && q.modo !== 'simulacro' ? `<span class="pastilla p-ambar" style="align-self:flex-start;white-space:normal">Viene de tu error: ${esc(patron.toLowerCase())}</span>`
+    : (P.tema ? `<span class="pastilla p-verde" style="align-self:flex-start">${esc(P.tema)}</span>` : '')}
+  <div class="tarjeta"><p class="pregunta">${esc(P.pregunta)}</p><p class="gris" style="font-size:14px">Responde sin mirar apuntes.</p></div>
   <div style="display:flex;flex-direction:column;gap:10px">${ops}</div>
-  ${q.verificado ? `<div class="retro ${bien ? 'ok' : 'mal'}" role="status"><b>${bien ? '¡Correcto!' : 'Incorrecto. Se guardó en tu banco de errores.'}</b> ${esc(P.exp)}</div>` : ''}
+  ${q.verificado ? `<div class="retro ${bien ? 'ok' : 'mal'}" role="status"><b>${bien ? '¡Correcto!' : 'Incorrecto. Se guardó en tu banco de errores.'}</b> ${esc(P.explicacion)}</div>` : ''}
   <div class="crecer"></div>
   ${q.verificado
     ? `<button type="button" class="btn btn-lima" id="siguiente">${q.i + 1 < q.orden.length ? 'Siguiente pregunta' : 'Ver resultado'}</button>`
@@ -336,21 +446,18 @@ V.sesion = () => {
 };
 
 V.resultado = () => {
-  const r = S.quiz.resultado;
-  const p = Math.round(100 * r.ok / r.total);
+  const r = S.quiz.resultado, p = Math.round(100 * r.ok / r.total);
   return `
 <div class="contenido">
-  <p class="gris">Sesión terminada</p>
+  <p class="gris">${esc(ex().materia)} · sesión terminada</p>
   <h1 style="font-size:36px">${p >= 85 ? '¡Muy bien!' : p >= 65 ? 'Vas mejorando' : 'Buen punto de partida'}</h1>
   <section class="oscura">
     <p class="suave2" style="font-size:14px">Acierto de esta sesión</p>
     <p class="cifra" style="color:var(--lima);font-size:64px">${p}%</p>
     <p class="suave2">${r.ok} de ${r.total} correctas</p>
   </section>
-  ${r.fallos.length ? `
-  <div class="tarjeta"><p style="font-weight:700">Errores que entraron a tu banco</p>
-    ${r.fallos.map((k) => `<p>· ${esc(PATRONES[k].patron)}</p>`).join('')}
-  </div>` : `<div class="tarjeta"><p style="font-weight:700">Sin errores nuevos en esta sesión.</p></div>`}
+  ${r.fallos.length ? `<div class="tarjeta"><p style="font-weight:700">Errores que entraron a tu banco</p>${r.fallos.map((k) => `<p>· ${esc(k)}</p>`).join('')}</div>`
+    : '<div class="tarjeta"><p style="font-weight:700">Sin errores nuevos en esta sesión.</p></div>'}
   <div class="crecer"></div>
   <button type="button" class="btn btn-violeta" data-ir="errores">Ver banco de errores</button>
   <button type="button" class="btn btn-borde" data-ir="progreso">Ver mi progreso</button>
@@ -358,68 +465,83 @@ V.resultado = () => {
 };
 
 V.errores = () => {
-  const ab = abiertos(), res = S.errors.filter((e) => e.estado === 'resuelto');
+  const e = ex(), ab = abiertos(e), res = e.errores.filter((x) => x.estado === 'resuelto');
   return `
 <div class="contenido">
-  <div><h1 style="font-size:32px">Banco de errores</h1><p class="gris">${esc(S.exams[0]?.materia || '')} · ${res.length} resueltos de ${S.errors.length}</p></div>
-  ${ab.length ? ab.map((e) => `
+  ${cabeceraMateria()}
+  <div><h1 style="font-size:32px">Banco de errores</h1><p class="gris">${esc(e.materia)} · ${res.length} resueltos de ${e.errores.length}</p></div>
+  ${ab.length ? ab.map((x, i) => `
   <div class="tarjeta borde">
-    <div class="fila"><span class="pastilla ${e.estado === 'abierto' ? 'p-rojo' : 'p-ambar'}">${e.estado === 'abierto' ? 'Abierto' : 'En práctica'}</span><span class="gris" style="font-size:13px">Apareció ${e.ap} ${e.ap === 1 ? 'vez' : 'veces'}</span></div>
-    <p style="font-size:17px;font-weight:700;line-height:1.3">${esc(PATRONES[e.k].patron)}</p>
-    <button type="button" class="btn btn-violeta btn-chico" data-practicar="${e.k}">Practicar este error</button>
-  </div>`).join('') : '<div class="tarjeta"><p style="font-weight:700">No tienes errores abiertos.</p><p class="gris">Haz una sesión o un simulacro para seguir entrenando.</p></div>'}
+    <div class="fila"><span class="pastilla ${x.estado === 'abierto' ? 'p-rojo' : 'p-ambar'}">${x.estado === 'abierto' ? 'Abierto' : 'En práctica'}</span><span class="gris" style="font-size:13px">Apareció ${x.ap} ${x.ap === 1 ? 'vez' : 'veces'}</span></div>
+    <p style="font-size:17px;font-weight:700;line-height:1.3">${esc(x.patron)}</p>
+    <button type="button" class="btn btn-violeta btn-chico" data-practicar="${e.errores.indexOf(x)}">Practicar este error</button>
+  </div>`).join('') : `<div class="vacio"><p style="font-weight:700">No tienes errores abiertos.</p><p class="gris">Haz una sesión o un simulacro: cada pregunta que falles aparecerá aquí.</p></div>`}
   ${res.length ? `<p style="font-size:13px;font-weight:700;color:var(--gris);margin-top:4px">Resueltos</p>
-  <div class="lista">${res.map((e) => `<div><span>${esc(PATRONES[e.k].patron)}</span><span style="color:var(--verde);font-weight:700">Resuelto</span></div>`).join('')}</div>` : ''}
+  <div class="lista">${res.map((x) => `<div><span>${esc(x.patron)}</span><span style="color:var(--verde);font-weight:700">Resuelto</span></div>`).join('')}</div>` : ''}
 </div>${tabs('errores')}`;
 };
 
 V.ejercicio = () => {
-  const pr = S.practica, pat = PATRONES[pr.k];
+  const pr = S.practica, x = ex().errores[pr.idx];
+  const ejercicio = x.ejercicio || ('Explica con tus palabras y resuelve: ' + (x.pregunta || x.patron));
+  const solucion = x.solucion || x.explicacion || 'Revisa tus apuntes sobre este tema.';
   return `
 <div class="contenido">
   <div class="fila"><button type="button" class="enlace" data-ir="errores">← Errores</button><p style="font-weight:700">Ejercicio focalizado</p></div>
-  <span class="pastilla p-ambar" style="align-self:flex-start;white-space:normal">Error: ${esc(pat.patron.toLowerCase())}</span>
-  <section class="oscura"><p class="pregunta">${esc(pat.ejercicio)}</p></section>
+  <span class="pastilla p-ambar" style="align-self:flex-start;white-space:normal">Error: ${esc(x.patron.toLowerCase())}</span>
+  <section class="oscura"><p class="pregunta">${esc(ejercicio)}</p></section>
   ${pr.enviado ? `
   <div class="tarjeta"><p style="font-weight:700">Tu respuesta</p><p style="white-space:pre-wrap">${esc(pr.texto || '(sin respuesta)')}</p></div>
-  <div class="retro ok"><b>Solución modelo.</b> ${esc(pat.solucion)}</div>
-  <p class="gris" style="font-size:13px">En la versión real, la IA corrige tu procedimiento. En la demo, compáralo tú con la solución.</p>
+  <div class="retro ok"><b>Solución modelo.</b> ${esc(solucion)}</div>
+  <p class="gris" style="font-size:13px">Compara tu procedimiento con la solución. En la versión completa, la IA lo corregirá por ti.</p>
   <button type="button" class="btn btn-lima" id="lo-tuve">Lo resolví bien</button>
   <button type="button" class="btn btn-borde" id="me-equivoque">Me equivoqué, seguir practicando</button>` : `
   <div class="campo crecer"><label for="resp">Tu respuesta</label>
     <textarea id="resp" placeholder="Escribe tu procedimiento y el resultado"></textarea></div>
-  <button type="button" class="btn btn-lima" id="enviar">Enviar para corrección</button>`}
+  <button type="button" class="btn btn-lima" id="enviar">Ver solución</button>`}
 </div>`;
 };
 
-V.simulacro = () => `
+V.simulacro = () => {
+  const e = ex(), n = Math.min(e.preguntas.length, 20);
+  return `
 <div class="contenido" style="background:var(--violeta);color:#fff">
-  <div><p style="color:#E4DEFF">${esc(S.exams[0]?.materia || '')} · ${esc(S.exams[0]?.titulo || '')}</p>
-  <h1 style="font-size:40px;line-height:1.05">Simulacro cronometrado</h1></div>
+  ${S.exams.length > 1 ? `<div class="cambiar" style="color:var(--tinta)"><span>${esc(e.materia)}</span><button type="button" data-ir="examenes">Cambiar materia</button></div>` : ''}
+  <div><p style="color:#E4DEFF">${esc(e.materia)} · ${esc(e.titulo)}</p>
+  <h1 style="font-size:40px;line-height:1.05">Simulacro</h1></div>
   <p style="font-size:17px">Todos los temas mezclados, sin avisar de cuál es cada pregunta.</p>
   <div class="grid2">
-    <div class="kpi"><b>${PREGUNTAS.length}</b><span>preguntas en la demo</span></div>
-    <div class="kpi"><b>4</b><span>temas mezclados</span></div>
-    <div class="kpi"><b>40</b><span>preguntas en la versión real</span></div>
+    <div class="kpi"><b>${n}</b><span>preguntas</span></div>
+    <div class="kpi"><b>${new Set(e.preguntas.map((p) => p.tema).filter(Boolean)).size || '—'}</b><span>temas mezclados</span></div>
+    <div class="kpi"><b>${e.preguntas.length}</b><span>preguntas en tu banco</span></div>
     <div class="kpi osc"><b>0</b><span>apuntes a la vista</span></div>
   </div>
   <p style="background:var(--vtexto);border-radius:18px;padding:16px;font-size:15px">Al terminar, cada fallo entra a tu banco de errores y la nota se suma a tu curva de progreso.</p>
   <div class="crecer"></div>
-  <button type="button" class="btn btn-lima" data-quiz="simulacro">Empezar simulacro</button>
+  ${n ? `<button type="button" class="btn btn-lima" data-quiz="simulacro">Empezar simulacro</button>`
+      : `<button type="button" class="btn btn-lima" data-banco="${e.id}">Primero genera preguntas</button>`}
 </div>${tabs('simulacro')}`;
+};
 
 V.progreso = () => {
-  const ss = S.sessions.slice(-9);
-  const ps = S.sessions.map(pct);
-  const ult = ps[ps.length - 1] ?? 0, delta = ult - (ps[0] ?? 0);
-  const min = S.sessions.reduce((a, s) => a + s.min, 0);
+  const e = ex(), ss = e.sesiones.slice(-9), ps = e.sesiones.map(pct);
+  const res = e.errores.filter((x) => x.estado === 'resuelto').length;
+  if (!ps.length) return `
+<div class="contenido">
+  ${cabeceraMateria()}
+  <h1 style="font-size:32px">Progreso</h1>
+  <div class="vacio"><p style="font-weight:700">Todavía no hay sesiones en ${esc(e.materia)}.</p><p class="gris">Haz tu primera sesión y aquí verás tu curva de acierto.</p></div>
+  <button type="button" class="btn btn-borde btn-chico" id="reiniciar">Reiniciar la demo</button>
+</div>${tabs('progreso')}`;
+  const ult = ps[ps.length - 1], delta = ult - ps[0];
+  const min = e.sesiones.reduce((a, s) => a + s.min, 0);
   const nivel = ult >= 85 ? 'Nivel avanzado' : ult >= 65 ? 'Nivel medio' : 'Nivel inicial';
-  const res = S.errors.filter((e) => e.estado === 'resuelto').length;
   return `
 <div class="contenido">
+  ${cabeceraMateria()}
   <div class="fila"><h1 style="font-size:32px">Progreso</h1><span class="pastilla p-lima" style="border:2px solid var(--tinta)">${nivel}</span></div>
   <div class="tarjeta">
-    <p style="font-size:14px;font-weight:700">Acierto por sesión</p>
+    <p style="font-size:14px;font-weight:700">Acierto por sesión · ${esc(e.materia)}</p>
     <div class="grafico" role="img" aria-label="Acierto por sesión: ${ss.map((s) => s.label + ' ' + pct(s) + '%').join(', ')}">
       ${ss.map((s, i) => `<div class="col"><span class="val">${pct(s)}%</span><div class="bar ${i === ss.length - 1 ? 'ult' : ''}" style="height:${Math.max(4, pct(s) * 1.5)}px"></div></div>`).join('')}
     </div>
@@ -427,97 +549,122 @@ V.progreso = () => {
   </div>
   <div class="grid2">
     <div class="kpi osc"><b>${delta >= 0 ? '+' : ''}${delta}</b><span>puntos desde la primera sesión</span></div>
-    <div class="kpi"><b>${Math.floor(min / 60)} h ${min % 60 ? (min % 60) + ' min' : ''}</b><span>de estudio activo</span></div>
-    <div class="kpi"><b>${res} / ${S.errors.length}</b><span>errores resueltos</span></div>
-    <div class="kpi"><b>${S.sessions.length}</b><span>sesiones registradas</span></div>
+    <div class="kpi"><b>${min >= 60 ? Math.floor(min / 60) + ' h ' : ''}${min % 60} min</b><span>de estudio activo</span></div>
+    <div class="kpi"><b>${res} / ${e.errores.length}</b><span>errores resueltos</span></div>
+    <div class="kpi"><b>${e.sesiones.length}</b><span>sesiones registradas</span></div>
   </div>
-  <p class="gris" style="font-size:13px">Las primeras 7 sesiones son los datos del informe de Cristhian Vargas. Las tuyas se suman como "Hoy".</p>
+  ${e.materia === 'Estadística' && e.sesiones.length >= 7 ? '<p class="gris" style="font-size:13px">En Estadística, las primeras 7 sesiones son los datos del informe de Cristhian Vargas.</p>' : ''}
   <button type="button" class="btn btn-borde btn-chico" id="reiniciar">Reiniciar la demo</button>
 </div>${tabs('progreso')}`;
 };
 
-// ---------- Render y eventos ----------
+// ================= Render y eventos =================
 function render() {
   const app = document.getElementById('app');
   const pantalla = S.user ? S.screen : 'login';
-  app.className = 'app' + (pantalla === 'login' ? ' violeta' : '') + (pantalla === 'simulacro' ? ' violeta' : '');
+  app.className = 'app' + (pantalla === 'login' || pantalla === 'simulacro' ? ' violeta' : '');
   app.innerHTML = (V[pantalla] || V.examenes)();
-  const h = app.querySelector('h1');
-  if (h) { h.setAttribute('tabindex', '-1'); }
 }
 
 function iniciarQuiz(modo) {
+  const e = ex(), idx = e.preguntas.map((_, i) => i);
+  if (!idx.length) return ir('banco');
   let orden;
-  if (modo === 'simulacro') orden = barajar(PREGUNTAS.map((_, i) => i));
+  if (modo === 'simulacro') orden = barajar(idx).slice(0, 20);
   else {
-    const abK = abiertos().map((e) => e.k);
-    const pri = PREGUNTAS.map((p, i) => i).filter((i) => abK.includes(PREGUNTAS[i].p));
-    const resto = barajar(PREGUNTAS.map((p, i) => i).filter((i) => !pri.includes(i)));
+    const abK = abiertos(e).map((x) => x.patron);
+    const pri = barajar(idx.filter((i) => abK.includes(patronDe(e.preguntas[i]))));
+    const resto = barajar(idx.filter((i) => !pri.includes(i)));
     orden = barajar(pri.concat(resto).slice(0, 6));
   }
-  S.quiz = { modo, orden, i: 0, aciertos: 0, elegido: null, verificado: false, inicio: Date.now(), fallos: [] };
+  const perms = orden.map((i) => barajar(e.preguntas[i].opciones.map((_, k) => k)));
+  S.quiz = { modo, orden, perms, i: 0, aciertos: 0, elegido: null, verificado: false, inicio: Date.now(), fallos: [] };
   ir('sesion');
 }
 
-function registrarError(k) {
-  const e = S.errors.find((x) => x.k === k);
-  if (e) { e.ap++; if (e.estado === 'resuelto') e.estado = 'en_practica'; }
-  else S.errors.push({ k, ap: 1, estado: 'abierto' });
+function registrarError(P) {
+  const e = ex(), patron = patronDe(P);
+  const x = e.errores.find((y) => y.patron === patron);
+  if (x) { x.ap++; if (x.estado === 'resuelto') x.estado = 'en_practica'; }
+  else e.errores.push({ patron, tema: P.tema, ap: 1, estado: 'abierto', ejercicio: P.ejercicio, solucion: P.solucion, pregunta: P.pregunta, explicacion: P.explicacion });
+  return patron;
+}
+
+function copiarTexto(t) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+  const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } finally { ta.remove(); }
+  return Promise.resolve();
 }
 
 document.addEventListener('click', (ev) => {
   const t = ev.target.closest('button');
   if (!t) return;
   if (t.dataset.ir) return ir(t.dataset.ir);
+  if (t.dataset.estudiar) { S.actual = t.dataset.estudiar; return iniciarQuiz('quiz'); }
+  if (t.dataset.banco) { S.actual = t.dataset.banco; S.ia.msg = null; return ir('banco'); }
   if (t.dataset.quiz) return iniciarQuiz(t.dataset.quiz);
+  if (t.dataset.ejemplo) {
+    const m = t.dataset.ejemplo, ya = S.exams.find((x) => x.materia === m);
+    if (ya) { S.actual = ya.id; return ir('examenes'); }
+    const e = crearExamen(m, enDias(7), [], true); S.exams.push(e); S.actual = e.id; return ir('examenes');
+  }
   if (t.dataset.op !== undefined && S.quiz && !S.quiz.verificado) { S.quiz.elegido = +t.dataset.op; guardar(); return render(); }
-  if (t.dataset.practicar) { S.practica = { k: t.dataset.practicar, enviado: false, texto: '' }; return ir('ejercicio'); }
+  if (t.dataset.practicar !== undefined) { S.practica = { idx: +t.dataset.practicar, enviado: false, texto: '' }; return ir('ejercicio'); }
   switch (t.id) {
     case 'salir': S.user = null; S.screen = 'login'; guardar(); return render();
     case 'salir-quiz': S.quiz = null; return ir('examenes');
     case 'responder': {
-      const q = S.quiz, P = PREGUNTAS[q.orden[q.i]];
+      const q = S.quiz, P = ex().preguntas[q.orden[q.i]];
       q.verificado = true;
-      if (q.elegido === P.ok) q.aciertos++;
-      else { registrarError(P.p); if (!q.fallos.includes(P.p)) q.fallos.push(P.p); }
+      if (q.perms[q.i][q.elegido] === P.correcta) q.aciertos++;
+      else { const k = registrarError(P); if (!q.fallos.includes(k)) q.fallos.push(k); }
       guardar(); return render();
     }
     case 'siguiente': {
       const q = S.quiz;
       if (q.i + 1 < q.orden.length) { q.i++; q.elegido = null; q.verificado = false; return ir('sesion'); }
       const min = Math.max(1, Math.round((Date.now() - q.inicio) / 60000));
-      S.sessions.push({ label: 'Hoy', total: q.orden.length, ok: q.aciertos, min });
+      const hoy = new Date().toLocaleDateString('es-BO', { day: 'numeric', month: 'numeric' });
+      ex().sesiones.push({ label: hoy, total: q.orden.length, ok: q.aciertos, min });
       q.resultado = { ok: q.aciertos, total: q.orden.length, fallos: q.fallos };
       return ir('resultado');
     }
+    case 'copiar': {
+      S.ia.notas = document.getElementById('notas').value; guardar();
+      return copiarTexto(promptIA()).then(() => { t.textContent = 'Copiada. Pégala en la IA'; },
+        () => { t.textContent = 'No se pudo copiar: ábrela en "Ver la instrucción"'; });
+    }
+    case 'importar': {
+      try {
+        const { validas, descartadas } = importarPreguntas(document.getElementById('respuesta').value);
+        ex().preguntas.push(...validas);
+        S.ia.msg = { ok: true, texto: `Se cargaron ${validas.length} preguntas${descartadas ? ` (${descartadas} ${descartadas === 1 ? 'descartada' : 'descartadas'} por formato)` : ''}. Ya puedes empezar tu sesión.` };
+      } catch (err) { S.ia.msg = { ok: false, texto: err.message }; }
+      guardar(); render(); return document.querySelector('.ok-msg, .err-msg')?.scrollIntoView({ block: 'center' });
+    }
     case 'enviar': S.practica.texto = document.getElementById('resp').value; S.practica.enviado = true; guardar(); return render();
-    case 'lo-tuve': { const e = S.errors.find((x) => x.k === S.practica.k); if (e) e.estado = 'resuelto'; S.practica = null; return ir('errores'); }
-    case 'me-equivoque': { const e = S.errors.find((x) => x.k === S.practica.k); if (e) { e.ap++; e.estado = 'en_practica'; } S.practica = null; return ir('errores'); }
-    case 'reiniciar': { const u = S.user; S = estadoInicial(); S.user = u; S.screen = 'examenes'; return ir('examenes'); }
+    case 'lo-tuve': { const x = ex().errores[S.practica.idx]; if (x) x.estado = 'resuelto'; S.practica = null; return ir('errores'); }
+    case 'me-equivoque': { const x = ex().errores[S.practica.idx]; if (x) { x.ap++; x.estado = 'en_practica'; } S.practica = null; return ir('errores'); }
+    case 'reiniciar': { const u = S.user; S = estadoInicial(); S.user = u; return ir('examenes'); }
   }
+});
+
+document.addEventListener('input', (ev) => {
+  if (ev.target.id === 'notas') { S.ia.notas = ev.target.value; guardar(); const pre = document.getElementById('prompt'); if (pre) pre.textContent = promptIA(); }
+});
+document.addEventListener('change', (ev) => {
+  if (ev.target.id === 'cantidad') { S.ia.cantidad = +ev.target.value; guardar(); const pre = document.getElementById('prompt'); if (pre) pre.textContent = promptIA(); }
 });
 
 document.addEventListener('submit', (ev) => {
   ev.preventDefault();
   if (ev.target.id === 'f-login') { S.user = document.getElementById('correo').value.trim(); return ir('examenes'); }
   if (ev.target.id === 'f-nuevo') {
-    S.exams.push({
-      id: 'e' + Date.now(),
-      materia: document.getElementById('materia').value.trim(),
-      titulo: 'Parcial',
-      fecha: document.getElementById('fecha').value,
-      temas: document.getElementById('temas').value.split(',').map((x) => x.trim()).filter(Boolean)
-    });
-    return ir('examenes');
-  }
-});
-
-document.addEventListener('change', (ev) => {
-  if (ev.target.id === 'archivos') {
-    const l = document.getElementById('lista-archivos');
-    const fs = [...ev.target.files];
-    l.hidden = !fs.length;
-    l.innerHTML = fs.map((f) => `<div><span>${esc(f.name)}</span><span style="color:var(--verde);font-weight:700">Listo</span></div>`).join('');
+    const temas = document.getElementById('temas').value.split(',').map((x) => x.trim()).filter(Boolean);
+    const e = crearExamen(document.getElementById('materia').value.trim(), document.getElementById('fecha').value, temas, false);
+    S.exams.push(e); S.actual = e.id; S.ia.notas = ''; S.ia.msg = null;
+    return ir('banco');
   }
 });
 
